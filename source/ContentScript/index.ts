@@ -1,6 +1,7 @@
 import { browser, Runtime } from 'webextension-polyfill-ts';
 import { fileSearchHome } from './fileSearchHome';
 import { scrapeFileSearchResults } from './fileSearchResultsPage';
+import { WorkflowStep, WorkflowStatus } from '../types';
 
 console.log('helloworld from content script');
 
@@ -8,7 +9,7 @@ const TARGET_URL = 'https://websurrogates.nycourts.gov/';
 const PAGE_LOAD_WAIT_MS = 10000; // 10 seconds
 
 // Track execution state for this content script instance
-let currentStep: string | null = null;
+let currentStep: WorkflowStep | null = null;
 let isExecuting = false;
 
 function isValidDomain(url: string): boolean {
@@ -16,9 +17,29 @@ function isValidDomain(url: string): boolean {
 }
 
 async function waitForPageLoad(): Promise<void> {
-  console.log('Waiting for page load...');
-  await new Promise((resolve) => setTimeout(resolve, PAGE_LOAD_WAIT_MS));
-  console.log('Page load wait complete');
+  console.log('Waiting for navigation to complete...');
+  
+  // If we're already on a stable page, return immediately
+  if (document.readyState === 'complete') {
+    console.log('Page already loaded');
+    return;
+  }
+
+  // Wait for the page to be fully loaded
+  await new Promise<void>((resolve) => {
+    const checkReadyState = () => {
+      if (document.readyState === 'complete') {
+        console.log('Navigation complete');
+        resolve();
+      } else {
+        setTimeout(checkReadyState, 100);
+      }
+    };
+    checkReadyState();
+  });
+
+  // Additional wait for dynamic content
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 }
 
 async function handleStartScrape(): Promise<void> {
@@ -76,7 +97,7 @@ async function openFileLinksOnResultsPage(): Promise<string[]> {
   return links;
 }
 
-async function executeStep(step: string, _metadata: Record<string, unknown>): Promise<unknown> {
+async function executeStep(step: WorkflowStep, _metadata: Record<string, unknown>): Promise<unknown> {
   switch (step) {
     case 'START_SCRAPE':
       await handleStartScrape();
@@ -93,6 +114,14 @@ async function executeStep(step: string, _metadata: Record<string, unknown>): Pr
       const opened = await openFileLinksOnResultsPage();
       await waitForPageLoad();
       return opened;
+    case 'CLICK_PROBATE_PETITION':
+      const buttons = document.querySelectorAll<HTMLButtonElement>('button');
+      const probateButton = Array.from(buttons).find(btn => btn.textContent?.includes('PROBATE PETITION'));
+      if (probateButton) {
+        probateButton.click();
+        await waitForPageLoad();
+      }
+      return null;
     default:
       return null;
   }
@@ -136,7 +165,10 @@ async function checkAndExecuteStep(): Promise<void> {
 setInterval(checkAndExecuteStep, 1000);
 
 browser.runtime.onMessage.addListener(
-  async (message: { type: string; step?: string; metadata?: Record<string, unknown> }, _sender: Runtime.MessageSender) => {
+  async (
+    message: { type: string; step?: WorkflowStep; metadata?: Record<string, unknown> },
+    _sender: Runtime.MessageSender
+  ) => {
     if (message.type === 'BACKGROUND_TO_CONTENT') {
       console.log('BACKGROUND_TO_CONTENT', message.step);
       if (message.step === 'CHECK_STATUS') {
