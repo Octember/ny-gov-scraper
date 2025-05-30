@@ -26,6 +26,8 @@ const workflowState: WorkflowStatus = {
   retryCount: 0,
 };
 
+const crawledFileIds = new Set<string>();
+
 function log(...args: unknown[]) {
   console.log('[Background]', ...args);
 }
@@ -44,8 +46,9 @@ async function notifyContent(step: 'CHECK_STATUS') {
 async function startWorkflow() {
   workflowState.isActive = true;
   workflowState.currentStep = STEP_ORDER[0];
-  workflowState.metadata = { step: workflowState.currentStep };
+  workflowState.metadata = { step: workflowState.currentStep, currentIndex: 0 };
   workflowState.retryCount = 0;
+  crawledFileIds.clear();
 
   log('Workflow started:', workflowState.currentStep);
   await notifyPopup({ isActive: true });
@@ -55,6 +58,10 @@ async function startWorkflow() {
 async function completeStep(): Promise<void> {
   workflowState.retryCount = 0;
   const currentIndex = STEP_ORDER.indexOf(workflowState.currentStep!);
+
+  if (workflowState.metadata.currentIndex !== undefined) {
+    workflowState.metadata.currentIndex += 1;
+  }
 
   if (currentIndex < STEP_ORDER.length - 1) {
     workflowState.currentStep = STEP_ORDER[currentIndex + 1];
@@ -131,3 +138,5 @@ browser.runtime.onMessage.addListener(
     return false;
   }
 );
+
+export { crawledFileIds };
