@@ -7,15 +7,38 @@ function openWebPage(url: string): Promise<Tabs.Tab> {
   return browser.tabs.create({ url });
 }
 
-const sendStepToBackground = async (step: string, metadata: Record<string, any> = {}): Promise<void> => {
+const sendStepToBackground = async (metadata: Record<string, unknown> = {}): Promise<void> => {
   await browser.runtime.sendMessage({
     type: 'POPUP_TO_BACKGROUND',
-    step,
     metadata,
   });
 };
 
 const Popup: React.FC = () => {
+  const [isActive, setIsActive] = React.useState(false);
+
+  React.useEffect(() => {
+    // Check initial status
+    browser.runtime.sendMessage({
+      type: 'CONTENT_TO_BACKGROUND',
+      action: 'GET_STATUS',
+    }).then((status) => {
+      setIsActive(status.isActive);
+    });
+
+    // Listen for status changes
+    const listener = (message: { type: string; isActive?: boolean }) => {
+      if (message.type === 'BACKGROUND_TO_POPUP' && typeof message.isActive === 'boolean') {
+        setIsActive(message.isActive);
+      }
+    };
+
+    browser.runtime.onMessage.addListener(listener);
+    return () => {
+      browser.runtime.onMessage.removeListener(listener);
+    };
+  }, []);
+
   return (
     <section id="popup">
       <h2>Noah&apos;s scraper</h2>
@@ -33,7 +56,7 @@ const Popup: React.FC = () => {
         type="button"
         style={{
           width: '50%',
-          background: 'orange',
+          background: isActive ? 'red' : 'orange',
           color: 'white',
           fontWeight: 500,
           borderRadius: 15,
@@ -44,9 +67,9 @@ const Popup: React.FC = () => {
           opacity: 0.8,
           display: 'flex',
         }}
-        onClick={() => sendStepToBackground('START_SCRAPE')}
+        onClick={() => sendStepToBackground()}
       >
-        Start Scrape in Content Script
+        {isActive ? 'Stop Scraping' : 'Start Scraping'}
       </button>
       <div className="links__holder">
         <ul>

@@ -34,7 +34,7 @@ async function handleStartScrape(): Promise<void> {
 
   if (window.location.href === 'https://websurrogates.nycourts.gov/File/FileSearchResults') {
     console.log('fileSearchResultsPage');
-    scrapeFileSearchResults();
+    await scrapeFileSearchResults();
     return;
   }
 
@@ -48,7 +48,7 @@ async function clickFileButton(btn: HTMLButtonElement): Promise<void> {
 }
 
 async function clickFileLinksSequentially(buttons: NodeListOf<HTMLButtonElement>): Promise<void> {
-  for (let i = 0; i < buttons.length; i++) {
+  for (let i = 0; i < buttons.length; i += 1) {
     await clickFileButton(buttons[i]);
   }
 }
@@ -59,33 +59,55 @@ async function openFileLinksOnResultsPage(): Promise<string[]> {
   console.log('table', table);
   if (!table) return links;
 
-  const buttons = table.querySelectorAll('button.ButtonAsLink[type="submit"]') as NodeListOf<HTMLButtonElement>;
+  const buttons = table.querySelectorAll<HTMLButtonElement>('button.ButtonAsLink[type="submit"]');
   await clickFileLinksSequentially(buttons);
   return links;
 }
 
+async function executeStep(step: string, _metadata: Record<string, unknown>): Promise<unknown> {
+  switch (step) {
+    case 'START_SCRAPE':
+      await handleStartScrape();
+      return null;
+    case 'FILE_SEARCH_HOME':
+      await fileSearchHome();
+      return null;
+    case 'FILE_SEARCH_RESULTS':
+      return scrapeFileSearchResults();
+    case 'OPEN_FILE_LINKS':
+      return openFileLinksOnResultsPage();
+    default:
+      return null;
+  }
+}
+
+// Check status and execute next step if active
+async function checkAndExecuteStep(): Promise<void> {
+  const status = await browser.runtime.sendMessage({
+    type: 'CONTENT_TO_BACKGROUND',
+    action: 'GET_STATUS',
+  });
+
+  if (status.isActive && status.currentStep) {
+    const result = await executeStep(status.currentStep, status.metadata);
+    
+    await browser.runtime.sendMessage({
+      type: 'CONTENT_TO_BACKGROUND',
+      action: 'STEP_COMPLETE',
+      result,
+    });
+  }
+}
+
+// Set up periodic status check
+setInterval(checkAndExecuteStep, 1000);
+
 browser.runtime.onMessage.addListener(
-  async (message: { type: string; step?: string; metadata?: any }, _sender: Runtime.MessageSender) => {
+  async (message: { type: string; step?: string; metadata?: Record<string, unknown> }, _sender: Runtime.MessageSender) => {
     if (message.type === 'BACKGROUND_TO_CONTENT') {
       console.log('BACKGROUND_TO_CONTENT', message.step);
-      if (message.step === 'START_SCRAPE') {
-        await handleStartScrape();
-        return true;
-      } 
-      
-      if (message.step === 'FILE_SEARCH_HOME') {
-        await fileSearchHome();
-        return true;
-      }
-
-      if (message.step === 'FILE_SEARCH_RESULTS') {
-        const results = scrapeFileSearchResults();
-        return results;
-      }
-
-      if (message.step === 'OPEN_FILE_LINKS') {
-        const opened = await openFileLinksOnResultsPage();
-        return opened;
+      if (message.step === 'CHECK_STATUS') {
+        await checkAndExecuteStep();
       }
       return true;
     }
