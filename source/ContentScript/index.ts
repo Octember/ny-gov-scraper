@@ -41,6 +41,26 @@ async function handleStartScrape(): Promise<void> {
   // If we get here, just signal done for the start step
 }
 
+function openFileLink(fileValue: string): void {
+  const url = `${window.location.origin}${window.location.pathname}?file=${encodeURIComponent(fileValue)}`;
+  window.open(url, '_blank');
+}
+
+function openFileLinksOnResultsPage(): string[] {
+  const links: string[] = [];
+  const table = document.querySelector<HTMLTableElement>('#NameResultsTable');
+  if (!table) return links;
+  const buttons = table.querySelectorAll('button.ButtonAsLink[type="submit"]');
+  buttons.forEach((btn) => {
+    const value = btn.getAttribute('value');
+    if (value) {
+      links.push(value);
+      openFileLink(value);
+    }
+  });
+  return links;
+}
+
 browser.runtime.onMessage.addListener(
   async (message: { type: string; step?: string; metadata?: any }, _sender: Runtime.MessageSender) => {
     if (message.type === 'BACKGROUND_TO_CONTENT') {
@@ -58,6 +78,11 @@ browser.runtime.onMessage.addListener(
       if (message.step === 'FILE_SEARCH_RESULTS') {
         const results = scrapeFileSearchResults();
         return results;
+      }
+
+      if (message.step === 'OPEN_FILE_LINKS') {
+        const opened = openFileLinksOnResultsPage();
+        return opened;
       }
       return true;
     }
