@@ -63,7 +63,7 @@ export const COURT_SELECT_MAP: Record<string, string> = {
   "Yates County Surrogate's Court": '62',
 };
 
-export function startScrapeAutomation(): void {
+export function fileSearchHome(): void {
   // Set CourtSelect to Kings County Surrogate's Court
   const kingsId = COURT_SELECT_MAP["Kings County Surrogate's Court"];
   const courtSelect = document.querySelector<HTMLSelectElement>('#CourtSelect');

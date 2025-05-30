@@ -1,5 +1,5 @@
-import {browser, Runtime} from 'webextension-polyfill-ts';
-import { startScrapeAutomation } from './scrapeAutomation';
+import { browser, Runtime } from 'webextension-polyfill-ts';
+import { fileSearchHome } from './fileSearchHome';
 
 console.log('helloworld from content script');
 
@@ -26,15 +26,15 @@ function handleStartScrape(): void {
     // window.location.href = 'https://websurrogates.nycourts.gov/File/FileSearch';
     return;
   }
-  startScrapeAutomation();
+  fileSearchHome();
 }
 
 browser.runtime.onMessage.addListener(
-  (message: {type: string}, _sender: Runtime.MessageSender) => {
+  (message: { type: string }, _sender: Runtime.MessageSender) => {
     if (message.type === 'START_SCRAPE') {
       handleStartScrape();
     }
   }
 );
 
-export {};
+export { };
