@@ -5,9 +5,15 @@ import { scrapeFileSearchResults } from './fileSearchResultsPage';
 import { openFileLinksOnResultsPage } from './file-links';
 import { waitForPageLoad } from './page-load';
 
+const TARGET_URL = 'https://websurrogates.nycourts.gov/';
+
 // Track execution state for this content script instance
 let currentStep: WorkflowStep | null = null;
 let isExecuting = false;
+
+function isValidDomain(url: string): boolean {
+  return url.startsWith(TARGET_URL);
+}
 
 async function handleStartScrape(): Promise<void> {
   console.log('handleStartScrape');
@@ -37,26 +43,34 @@ async function handleStartScrape(): Promise<void> {
     await waitForPageLoad();
     return;
   }
+
+  // If we're not on any of the expected pages, redirect to the target URL
+  window.location.href = TARGET_URL;
 }
 
 async function executeStep(step: WorkflowStep, _metadata: Record<string, unknown>): Promise<unknown> {
+  console.log('Executing step:', step);
   switch (step) {
     case 'START_SCRAPE':
       await handleStartScrape();
       return null;
     case 'FILE_SEARCH_HOME':
+      console.log('Executing FILE_SEARCH_HOME');
       await fileSearchHome();
       await waitForPageLoad();
       return null;
     case 'FILE_SEARCH_RESULTS':
+      console.log('Executing FILE_SEARCH_RESULTS');
       const results = await scrapeFileSearchResults();
       await waitForPageLoad();
       return results;
     case 'OPEN_FILE_LINKS':
+      console.log('Executing OPEN_FILE_LINKS');
       const opened = await openFileLinksOnResultsPage();
       await waitForPageLoad();
       return opened;
     case 'CLICK_PROBATE_PETITION':
+      console.log('Executing CLICK_PROBATE_PETITION');
       const buttons = document.querySelectorAll<HTMLButtonElement>('button');
       const probateButton = Array.from(buttons).find(btn => btn.textContent?.includes('PROBATE PETITION'));
       if (probateButton) {
@@ -65,6 +79,7 @@ async function executeStep(step: WorkflowStep, _metadata: Record<string, unknown
       }
       return null;
     default:
+      console.log('Unknown step:', step);
       return null;
   }
 }
@@ -73,6 +88,7 @@ async function executeStep(step: WorkflowStep, _metadata: Record<string, unknown
 async function checkAndExecuteStep(): Promise<void> {
   // Skip if we're already executing a step
   if (isExecuting) {
+    console.log('Already executing a step, skipping');
     return;
   }
 
@@ -81,23 +97,29 @@ async function checkAndExecuteStep(): Promise<void> {
     action: 'GET_STATUS',
   });
 
+  console.log('Current workflow status:', status);
+
   // Skip if no step or if we're already on this step
   if (!status.isActive || !status.currentStep || status.currentStep === currentStep) {
+    console.log('No active step or already on current step, skipping');
     return;
   }
 
   try {
     isExecuting = true;
     currentStep = status.currentStep;
-    console.log('Executing step:', currentStep);
+    console.log('Starting execution of step:', currentStep);
     
     const result = await executeStep(currentStep, status.metadata);
+    console.log('Step execution complete:', currentStep, 'Result:', result);
     
     await browser.runtime.sendMessage({
       type: 'CONTENT_TO_BACKGROUND',
       action: 'STEP_COMPLETE',
       result,
     });
+  } catch (error) {
+    console.error('Error executing step:', error);
   } finally {
     isExecuting = false;
   }

@@ -87,9 +87,39 @@ function waitForResultsAndContinue(): Promise<void> {
 }
 
 export async function fileSearchHome(): Promise<void> {
-  const searchButton = document.querySelector<HTMLButtonElement>('button[type="submit"]');
-  if (searchButton) {
-    searchButton.click();
+  // Set CourtSelect to Kings County Surrogate's Court
+  const kingsId = COURT_SELECT_MAP["Kings County Surrogate's Court"];
+  const courtSelect = document.querySelector<HTMLSelectElement>('#CourtSelect');
+  if (courtSelect && kingsId) {
+    courtSelect.value = kingsId;
+    courtSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  // Set SelectedProceeding
+  const proceedingSelect = document.querySelector<HTMLSelectElement>('#SelectedProceeding');
+  if (proceedingSelect) {
+    proceedingSelect.value = 'PROBATE PETITION';
+    proceedingSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  // Set Filing Date From
+  const dateFrom = document.querySelector<HTMLInputElement>('#txtFilingDateFrom');
+  if (dateFrom) {
+    dateFrom.value = '05/01/2025';
+    dateFrom.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  // Set Filing Date To
+  const dateTo = document.querySelector<HTMLInputElement>('#txtFilingDateTo');
+  if (dateTo) {
+    dateTo.value = '05/29/2025';
+    dateTo.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  // Click Submit
+  const submitBtn = document.querySelector<HTMLButtonElement>('#FileSearchSubmit2');
+  if (submitBtn) {
+    submitBtn.click();
     await waitForPageLoad();
   }
 }

@@ -12,9 +12,8 @@ browser.runtime.onMessage.addListener(
   ) => {
     if (message.type === 'BACKGROUND_TO_CONTENT') {
       console.log('BACKGROUND_TO_CONTENT', message.step);
-      if (message.step === 'CHECK_STATUS') {
-        await checkAndExecuteStep();
-      }
+      // Always check and execute step when we receive a message
+      await checkAndExecuteStep();
       return true;
     }
     return true;
