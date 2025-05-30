@@ -1,4 +1,3 @@
-
 import { browser } from 'webextension-polyfill-ts';
 import { WorkflowStep } from '../types';
 import { fileSearchHome } from './fileSearchHome';
@@ -44,7 +43,7 @@ const PAGE_HANDLERS: Record<WorkflowStep, PageHandler> = {
   OPEN_FILE_LINKS: {
     match: url => url.includes('/File/FileSearchResults'),
     handler: async () => {
-      const opened = await openFileLinksOnResultsPage();
+      const opened = await openFileLinksOnResultsPage(0 );
       await waitForPageLoad();
       return opened;
     },
@@ -68,6 +67,15 @@ const PAGE_HANDLERS: Record<WorkflowStep, PageHandler> = {
       );
       if (!button) throw new Error('Probate petition button not found');
       button.click();
+      await waitForPageLoad();
+    },
+  },
+  CLOSE_FILE: {
+    match: url => url.includes('/File/FileHistory'),
+    handler: async () => {
+      const closeButton = document.querySelector<HTMLButtonElement>('#FileHistoryClose');
+      if (!closeButton) throw new Error('Close button not found');
+      closeButton.click();
       await waitForPageLoad();
     },
   },

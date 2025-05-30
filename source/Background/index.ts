@@ -13,6 +13,7 @@ const STEP_ORDER: WorkflowStep[] = [
   'FILE_SEARCH_RESULTS',
   'OPEN_FILE_LINKS',
   'CLICK_PROBATE_PETITION',
+  'CLOSE_FILE',
 ];
 
 const MAX_RETRIES = 3;
@@ -58,6 +59,12 @@ async function completeStep(): Promise<void> {
   if (currentIndex < STEP_ORDER.length - 1) {
     workflowState.currentStep = STEP_ORDER[currentIndex + 1];
     log('Advancing to step:', workflowState.currentStep);
+    
+    // Add delay after CLOSE_FILE step to allow page transition
+    if (workflowState.currentStep === 'CLOSE_FILE') {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    
     await notifyContent('CHECK_STATUS');
   } else {
     log('Workflow complete');
@@ -87,6 +94,7 @@ async function failStep(errorMsg: string) {
 browser.runtime.onInstalled.addListener(() => {
   log('Extension installed');
 });
+
 
 browser.runtime.onMessage.addListener(
   async (message: ExtensionMessage, sender): Promise<unknown> => {

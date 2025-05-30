@@ -3,7 +3,8 @@ export type WorkflowStep =
   | 'FILE_SEARCH_HOME'
   | 'FILE_SEARCH_RESULTS'
   | 'OPEN_FILE_LINKS'
-  | 'CLICK_PROBATE_PETITION';
+  | 'CLICK_PROBATE_PETITION'
+  | 'CLOSE_FILE';
 
 export interface WorkflowStatus {
   isActive: boolean;
