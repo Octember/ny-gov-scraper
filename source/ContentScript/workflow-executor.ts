@@ -95,19 +95,6 @@ async function runStep(step: WorkflowStep): Promise<unknown> {
     throw new Error(`No handler defined for step: ${step}`);
   }
 
-  // Redirect if domain mismatch
-  if (!window.location.href.startsWith(TARGET_URL)) {
-    window.location.href = TARGET_URL;
-    return;
-  }
-
-  // Ensure URL matches expected
-  if (!pageHandler.match(window.location.href)) {
-    log(`URL does not match handler for ${step}, redirecting`);
-    window.location.href = TARGET_URL;
-    return;
-  }
-
   return Promise.race([
     pageHandler.handler(),
     new Promise((_, reject) => setTimeout(() => reject(new Error('Step timeout')), TIMEOUT_MS)),

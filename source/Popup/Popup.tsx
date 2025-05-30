@@ -17,6 +17,7 @@ const sendStepToBackground = async (metadata: Record<string, unknown> = {}): Pro
   // Send message to background script to start workflow
   await browser.runtime.sendMessage({
     type: 'POPUP_TO_BACKGROUND',
+    action: 'START_WORKFLOW',
     metadata,
   });
 

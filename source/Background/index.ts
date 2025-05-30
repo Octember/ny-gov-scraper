@@ -26,7 +26,7 @@ const workflowState: WorkflowStatus = {
 };
 
 function log(...args: unknown[]) {
-  console.debug('[Background]', ...args);
+  console.log('[Background]', ...args);
 }
 
 async function notifyPopup(payload: Partial<PopupToBackgroundMessage>) {
@@ -51,7 +51,7 @@ async function startWorkflow() {
   await notifyContent('CHECK_STATUS');
 }
 
-async function completeStep() {
+async function completeStep(): Promise<void> {
   workflowState.retryCount = 0;
   const currentIndex = STEP_ORDER.indexOf(workflowState.currentStep!);
 

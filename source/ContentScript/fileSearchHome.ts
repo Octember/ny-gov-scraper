@@ -97,8 +97,10 @@ export async function fileSearchHome(): Promise<void> {
 
   // Click Submit
   const submitBtn = document.querySelector<HTMLButtonElement>('#FileSearchSubmit2');
+  console.log('submitBtn', submitBtn);
   if (submitBtn) {
     submitBtn.click();
+    console.log('clicked submitBtn');
     await waitForPageLoad();
   }
 }
