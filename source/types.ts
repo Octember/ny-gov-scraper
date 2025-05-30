@@ -21,7 +21,7 @@ export interface WorkflowStatus {
 // Message types for communication between components
 export interface PopupToBackgroundMessage {
   type: 'POPUP_TO_BACKGROUND';
-  action?: 'GET_STATUS' | 'START_WORKFLOW';
+  action?: 'GET_STATUS' | 'START_WORKFLOW' | 'STOP_WORKFLOW';
   metadata?: Record<string, unknown>;
   error?: string;
   isActive?: boolean;

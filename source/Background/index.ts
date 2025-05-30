@@ -148,6 +148,18 @@ async function failStep(errorMsg: string) {
   }
 }
 
+async function stopWorkflow(): Promise<void> {
+  log('Stopping workflow');
+  workflowState.isActive = false;
+  workflowState.currentStep = null;
+  workflowState.metadata = {
+    step: 'START_SCRAPE',
+    currentIndex: 0,
+  };
+  workflowState.stalledCount = 0;
+  await notifyPopup({ isActive: false });
+}
+
 browser.runtime.onInstalled.addListener(() => {
   log('Extension installed');
 });
@@ -165,6 +177,10 @@ browser.runtime.onMessage.addListener(
       }
       if (pm.action === 'START_WORKFLOW') {
         await startWorkflow();
+        return true;
+      }
+      if (pm.action === 'STOP_WORKFLOW') {
+        await stopWorkflow();
         return true;
       }
     }
