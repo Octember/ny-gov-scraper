@@ -1,28 +1,25 @@
-export interface FileSearchResultRow {
-  fileNumber: string;
-  fileDate: string;
-  fileName: string;
-  proceeding: string;
-  dod: string;
-}
+import { waitForPageLoad } from './page-load';
 
-export function scrapeFileSearchResults(): FileSearchResultRow[] {
+export async function scrapeFileSearchResults(): Promise<Record<string, unknown>[]> {
+  const results: Record<string, unknown>[] = [];
   const table = document.querySelector<HTMLTableElement>('#NameResultsTable');
+  
   if (!table) {
-    console.warn('No results table found');
-    return [];
+    return results;
   }
-  const rows = Array.from(table.querySelectorAll('tbody tr'));
-  const results: FileSearchResultRow[] = rows.map(row => {
+
+  const rows = table.querySelectorAll('tr');
+  rows.forEach((row) => {
     const cells = row.querySelectorAll('td');
-    return {
-      fileNumber: cells[0]?.innerText.trim() || '',
-      fileDate: cells[1]?.innerText.trim() || '',
-      fileName: cells[2]?.innerText.trim() || '',
-      proceeding: cells[3]?.innerText.trim() || '',
-      dod: cells[4]?.innerText.trim() || '',
-    };
+    if (cells.length > 0) {
+      const result: Record<string, unknown> = {};
+      cells.forEach((cell, index) => {
+        result[`column${index}`] = cell.textContent?.trim() || '';
+      });
+      results.push(result);
+    }
   });
-  console.log('File Search Results:', results);
+
+  await waitForPageLoad();
   return results;
 } 

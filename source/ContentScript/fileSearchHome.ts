@@ -1,5 +1,7 @@
 // This file expects to run in the context of the File Search page.
 
+import { waitForPageLoad } from './page-load';
+
 export const COURT_SELECT_MAP: Record<string, string> = {
   "Albany County Surrogate's Court": '1',
   "Allegany County Surrogate's Court": '2',
@@ -84,46 +86,13 @@ function waitForResultsAndContinue(): Promise<void> {
   });
 }
 
-
 export async function fileSearchHome(): Promise<void> {
-  // Set CourtSelect to Kings County Surrogate's Court
-  const kingsId = COURT_SELECT_MAP["Kings County Surrogate's Court"];
-  const courtSelect = document.querySelector<HTMLSelectElement>('#CourtSelect');
-  if (courtSelect && kingsId) {
-    courtSelect.value = kingsId;
-    courtSelect.dispatchEvent(new Event('change', { bubbles: true }));
-  }
-
-  // Set SelectedProceeding
-  const proceedingSelect = document.querySelector<HTMLSelectElement>('#SelectedProceeding');
-  if (proceedingSelect) {
-    proceedingSelect.value = 'PROBATE PETITION';
-    proceedingSelect.dispatchEvent(new Event('change', { bubbles: true }));
-  }
-
-  // Set Filing Date From
-  const dateFrom = document.querySelector<HTMLInputElement>('#txtFilingDateFrom');
-  if (dateFrom) {
-    dateFrom.value = '05/01/2025';
-    dateFrom.dispatchEvent(new Event('change', { bubbles: true }));
-  }
-
-  // Set Filing Date To
-  const dateTo = document.querySelector<HTMLInputElement>('#txtFilingDateTo');
-  if (dateTo) {
-    dateTo.value = '05/29/2025';
-    dateTo.dispatchEvent(new Event('change', { bubbles: true }));
-  }
-
-  // Click Submit
-  const submitBtn = document.querySelector<HTMLButtonElement>('#FileSearchSubmit2');
-  if (submitBtn) {
-    submitBtn.click();
-    await waitForResultsAndContinue();
-    console.log('Results page reached');
+  const searchButton = document.querySelector<HTMLButtonElement>('button[type="submit"]');
+  if (searchButton) {
+    searchButton.click();
+    await waitForPageLoad();
   }
 }
-
 
 export function fileSearchResultsPage(): void {
   // TODO: implement scraping logic for results page

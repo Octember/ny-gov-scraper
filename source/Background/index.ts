@@ -28,23 +28,6 @@ const workflowState: WorkflowStatus = {
   metadata: {},
 };
 
-async function sendStepToContent(
-  step: STEP,
-  metadata: Record<string, unknown>
-): Promise<unknown> {
-  const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-  if (tabs[0]?.id) {
-    const result = await browser.tabs.sendMessage(tabs[0].id, {
-      type: 'BACKGROUND_TO_CONTENT',
-      step,
-      metadata,
-    });
-    return result;
-  }
-  return null;
-}
-
-// Handle messages from popup and content script
 browser.runtime.onMessage.addListener(
   async (
     message: { type: string; action: string; result?: unknown },
