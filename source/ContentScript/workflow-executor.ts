@@ -100,8 +100,18 @@ async function checkAndExecuteStep(): Promise<void> {
   console.log('Current workflow status:', status);
 
   // Skip if no step or if we're already on this step
-  if (!status.isActive || !status.currentStep || status.currentStep === currentStep) {
-    console.log('No active step or already on current step, skipping');
+  if (!status.isActive) {
+    console.log('Workflow not active, skipping');
+    return;
+  }
+
+  if (!status.currentStep) {
+    console.log('No current step, skipping');
+    return;
+  }
+
+  if (status.currentStep === currentStep) {
+    console.log('Already on current step, skipping');
     return;
   }
 
@@ -126,6 +136,6 @@ async function checkAndExecuteStep(): Promise<void> {
 }
 
 // Set up periodic status check
-setInterval(checkAndExecuteStep, 1000);
+setInterval(checkAndExecuteStep, 5000);
 
 export { checkAndExecuteStep }; 

@@ -65,27 +65,6 @@ export const COURT_SELECT_MAP: Record<string, string> = {
   "Yates County Surrogate's Court": '62',
 };
 
-function waitForResultsAndContinue(): Promise<void> {
-  const checkInterval = 200;
-  const maxWait = 10000; // 10 seconds
-  let waited = 0;
-  return new Promise((resolve, reject) => {
-    function check(): void {
-      if (document.querySelector('#NameResultsTable')) {
-        resolve();
-        return;
-      }
-      waited += checkInterval;
-      if (waited < maxWait) {
-        setTimeout(check, checkInterval);
-      } else {
-        reject(new Error('Timed out waiting for results table'));
-      }
-    }
-    check();
-  });
-}
-
 export async function fileSearchHome(): Promise<void> {
   // Set CourtSelect to Kings County Surrogate's Court
   const kingsId = COURT_SELECT_MAP["Kings County Surrogate's Court"];

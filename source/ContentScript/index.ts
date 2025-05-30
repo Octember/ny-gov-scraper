@@ -1,22 +1,25 @@
 import { browser, Runtime } from 'webextension-polyfill-ts';
-import { WorkflowStep } from '../types';
+import { ExtensionMessage, BackgroundToContentMessage } from '../types';
 import { checkAndExecuteStep } from './workflow-executor';
 
 console.log('helloworld from content script');
 
-// Handle messages from background script
+// Listen for messages from the background script
 browser.runtime.onMessage.addListener(
   async (
-    message: { type: string; step?: WorkflowStep; metadata?: Record<string, unknown> },
+    message: ExtensionMessage,
     _sender: Runtime.MessageSender
-  ) => {
+  ): Promise<unknown> => {
+    console.log('Content script received message:', message);
+
     if (message.type === 'BACKGROUND_TO_CONTENT') {
-      console.log('BACKGROUND_TO_CONTENT', message.step);
-      // Always check and execute step when we receive a message
-      await checkAndExecuteStep();
+      if (message.step === 'CHECK_STATUS') {
+        await checkAndExecuteStep();
+      }
       return true;
     }
-    return true;
+
+    return false;
   }
 );
 
