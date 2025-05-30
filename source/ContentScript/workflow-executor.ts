@@ -13,7 +13,7 @@ const MIN_INTERVAL = 1_000;
 
 type PageHandler = {
   match: (url: string) => boolean;
-  handler: () => Promise<unknown>;
+  handler: (metadata: Record<string, unknown>) => Promise<unknown>;
 };
 
 const PAGE_HANDLERS: Record<WorkflowStep, PageHandler> = {
@@ -42,8 +42,9 @@ const PAGE_HANDLERS: Record<WorkflowStep, PageHandler> = {
   },
   OPEN_FILE_LINKS: {
     match: url => url.includes('/File/FileSearchResults'),
-    handler: async () => {
-      const opened = await openFileLinksOnResultsPage(0 );
+    handler: async (metadata) => {
+      const index = typeof metadata.currentIndex === 'number' ? metadata.currentIndex : 0;
+      const opened = await openFileLinksOnResultsPage(index);
       await waitForPageLoad();
       return opened;
     },
@@ -51,13 +52,14 @@ const PAGE_HANDLERS: Record<WorkflowStep, PageHandler> = {
   CLICK_PROBATE_PETITION: {
     match: url => url.includes('/File/FileHistory'),
     handler: async () => {
-      // Navigate if needed
+      // Only try to navigate if we're not already on FileHistory page
       if (!window.location.href.includes('/File/FileHistory')) {
         const links = document.querySelectorAll<HTMLAnchorElement>('a[href*="/File/FileHistory"]');
         if (!links.length) throw new Error('No FileHistory links found');
         links[0].click();
         await waitForPageLoad();
       }
+
       // Click the probate button
       await waitForPageLoad();
       const button = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(btn =>
@@ -73,10 +75,32 @@ const PAGE_HANDLERS: Record<WorkflowStep, PageHandler> = {
   CLOSE_FILE: {
     match: url => url.includes('/File/FileHistory'),
     handler: async () => {
+      // If we're already on results page, consider it successful
+      if (window.location.href.includes('/File/FileSearchResults')) {
+        const table = document.querySelector<HTMLTableElement>('#NameResultsTable');
+        if (table) return;
+      }
+
       const closeButton = document.querySelector<HTMLButtonElement>('#FileHistoryClose');
       if (!closeButton) throw new Error('Close button not found');
       closeButton.click();
+      
+      // Wait for page load and transition
       await waitForPageLoad();
+      
+      // Give extra time for the page transition
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Now check if we're back on results page
+      if (!window.location.href.includes('/File/FileSearchResults')) {
+        throw new Error('Not back on results page');
+      }
+      
+      // Additional wait to ensure table is loaded
+      const table = document.querySelector<HTMLTableElement>('#NameResultsTable');
+      if (!table) {
+        throw new Error('Results table not found');
+      }
     },
   },
 };
@@ -97,14 +121,14 @@ async function getStatus() {
 }
 
 // Execute the handler for a given step with timeout
-async function runStep(step: WorkflowStep): Promise<unknown> {
+async function runStep(step: WorkflowStep, metadata: Record<string, unknown>): Promise<unknown> {
   const pageHandler = PAGE_HANDLERS[step];
   if (!pageHandler) {
     throw new Error(`No handler defined for step: ${step}`);
   }
 
   return Promise.race([
-    pageHandler.handler(),
+    pageHandler.handler(metadata),
     new Promise((_, reject) => setTimeout(() => reject(new Error('Step timeout')), TIMEOUT_MS)),
   ]);
 }
@@ -122,7 +146,7 @@ async function checkAndExecuteStep(): Promise<void> {
     }
 
     const step: WorkflowStep = status.currentStep;
-    const result = await runStep(step);
+    const result = await runStep(step, status.metadata || {});
 
     await browser.runtime.sendMessage({
       type: 'CONTENT_TO_BACKGROUND',

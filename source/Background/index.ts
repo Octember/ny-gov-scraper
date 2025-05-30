@@ -52,7 +52,7 @@ async function notifyContent(step: 'CHECK_STATUS') {
 async function startWorkflow() {
   workflowState.isActive = true;
   workflowState.currentStep = CONFIG.STEP_ORDER[0];
-  workflowState.metadata = { step: workflowState.currentStep, currentIndex: 0 };
+  workflowState.metadata = { step: workflowState.currentStep, currentIndex: 5 };
   workflowState.retryCount = 0;
   workflowState.stalledCount = 0;
   crawledFileIds.clear();
@@ -77,15 +77,22 @@ async function completeStep(): Promise<void> {
 
   if (isLoopingStep) {
     if (currentStep === 'CLOSE_FILE') {
+      // Add a delay after CLOSE_FILE to allow page transition
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Increment index after completing a full loop
       const currentIndex = metadata.currentIndex || 0;
-      metadata.currentIndex += 1;
+      metadata.currentIndex = currentIndex + 1;
+      log(`Completed loop ${currentIndex + 1}`);
 
       // If we looped and made no progress multiple times, end it
       if (metadata.lastSuccessfulIndex === currentIndex) {
         workflowState.stalledCount = (workflowState.stalledCount || 0) + 1;
+        log(`Stalled at index ${currentIndex} (count: ${workflowState.stalledCount})`);
       } else {
         workflowState.stalledCount = 0;
         metadata.lastSuccessfulIndex = currentIndex;
+        log(`Progress made at index ${currentIndex}`);
       }
 
       if (
@@ -103,12 +110,32 @@ async function completeStep(): Promise<void> {
         await notifyPopup({ isActive: false });
         return;
       }
+
+      // Add another delay before moving to next step
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     const nextStep = LOOP_STEPS[currentStep];
     workflowState.currentStep = nextStep;
     log(`Looping to step: ${nextStep} (Index: ${metadata.currentIndex})`);
-    await notifyContent('CHECK_STATUS');
+    
+    // Add retry mechanism for sending message
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        await notifyContent('CHECK_STATUS');
+        break;
+      } catch (error) {
+        retries--;
+        if (retries === 0) {
+          log('Failed to notify content script after retries');
+          await failStep('Failed to communicate with page after navigation');
+          return;
+        }
+        log(`Retrying content notification (${retries} attempts left)`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
     return;
   }
 
