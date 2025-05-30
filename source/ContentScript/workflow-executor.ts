@@ -27,8 +27,8 @@ const PAGE_HANDLERS: Record<WorkflowStep, PageHandler> = {
   },
   FILE_SEARCH_HOME: {
     match: url => url.includes('/File/FileSearch'),
-    handler: async () => {
-      await fileSearchHome();
+    handler: async (metadata) => {
+      await fileSearchHome(metadata);
       await waitForPageLoad();
     },
   },
@@ -52,14 +52,13 @@ const PAGE_HANDLERS: Record<WorkflowStep, PageHandler> = {
   CLICK_PROBATE_PETITION: {
     match: url => url.includes('/File/FileHistory'),
     handler: async () => {
-      // Only try to navigate if we're not already on FileHistory page
+      // Navigate if needed
       if (!window.location.href.includes('/File/FileHistory')) {
         const links = document.querySelectorAll<HTMLAnchorElement>('a[href*="/File/FileHistory"]');
         if (!links.length) throw new Error('No FileHistory links found');
         links[0].click();
         await waitForPageLoad();
       }
-
       // Click the probate button
       await waitForPageLoad();
       const button = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(btn =>
@@ -75,10 +74,9 @@ const PAGE_HANDLERS: Record<WorkflowStep, PageHandler> = {
   CLOSE_FILE: {
     match: url => url.includes('/File/FileHistory'),
     handler: async () => {
-      // If we're already on results page, consider it successful
-      if (window.location.href.includes('/File/FileSearchResults')) {
-        const table = document.querySelector<HTMLTableElement>('#NameResultsTable');
-        if (table) return;
+      // If we're not on a file history page, consider this step complete
+      if (!window.location.href.includes('/File/FileHistory')) {
+        return;
       }
 
       const closeButton = document.querySelector<HTMLButtonElement>('#FileHistoryClose');

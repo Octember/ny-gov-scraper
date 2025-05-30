@@ -65,12 +65,14 @@ export const COURT_SELECT_MAP: Record<string, string> = {
   "Yates County Surrogate's Court": '62',
 };
 
-export async function fileSearchHome(): Promise<void> {
-  // Set CourtSelect to Kings County Surrogate's Court
-  const kingsId = COURT_SELECT_MAP["Kings County Surrogate's Court"];
+export async function fileSearchHome(metadata: Record<string, unknown> = {}): Promise<void> {
+  // Get county ID from metadata or default to Kings County
+  const countyId = metadata.countyId || COURT_SELECT_MAP["Kings County Surrogate's Court"];
+  
+  // Set CourtSelect to selected county
   const courtSelect = document.querySelector<HTMLSelectElement>('#CourtSelect');
-  if (courtSelect && kingsId) {
-    courtSelect.value = kingsId;
+  if (courtSelect && countyId) {
+    courtSelect.value = countyId as string;
     courtSelect.dispatchEvent(new Event('change', { bubbles: true }));
   }
 

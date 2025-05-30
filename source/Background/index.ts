@@ -49,10 +49,14 @@ async function notifyContent(step: 'CHECK_STATUS') {
   }
 }
 
-async function startWorkflow() {
+async function startWorkflow(metadata: WorkflowStatus['metadata']): Promise<void> {
   workflowState.isActive = true;
   workflowState.currentStep = CONFIG.STEP_ORDER[0];
-  workflowState.metadata = { step: workflowState.currentStep, currentIndex: 5 };
+  workflowState.metadata = { 
+    step: workflowState.currentStep, 
+    currentIndex: 0,
+    countyId: metadata.countyId || '24' // Default to Kings County if not specified
+  };
   workflowState.retryCount = 0;
   workflowState.stalledCount = 0;
   crawledFileIds.clear();
@@ -203,7 +207,7 @@ browser.runtime.onMessage.addListener(
         return workflowState;
       }
       if (pm.action === 'START_WORKFLOW') {
-        await startWorkflow();
+        await startWorkflow(pm.metadata as WorkflowStatus['metadata']);
         return true;
       }
       if (pm.action === 'STOP_WORKFLOW') {

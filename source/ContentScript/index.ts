@@ -1,8 +1,18 @@
-import { browser, Runtime } from 'webextension-polyfill-ts';
-import { ExtensionMessage,  } from '../types';
+import { browser } from 'webextension-polyfill-ts';
+import { injectPopup } from './page-popup';
+import { ExtensionMessage } from '../types';
 import { checkAndExecuteStep } from './workflow-executor';
 
 console.log('helloworld from content script');
+
+// Inject the popup when the page loads
+injectPopup();
+
+// Listen for messages from the background script
+browser.runtime.onMessage.addListener((message: ExtensionMessage) => {
+  console.log('[Content] Message received:', message);
+  // Handle messages here
+});
 
 // Listen for messages from the background script
 browser.runtime.onMessage.addListener(

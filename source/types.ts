@@ -14,6 +14,7 @@ export interface WorkflowStatus {
     step: WorkflowStep;
     currentIndex: number;
     lastSuccessfulIndex?: number;
+    countyId?: string;
   };
   stalledCount: number;
 }
