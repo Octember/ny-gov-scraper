@@ -41,23 +41,26 @@ async function handleStartScrape(): Promise<void> {
   // If we get here, just signal done for the start step
 }
 
-function openFileLink(fileValue: string): void {
-  const url = `${window.location.origin}${window.location.pathname}?file=${encodeURIComponent(fileValue)}`;
-  window.open(url, '_blank');
+async function clickFileButton(btn: HTMLButtonElement): Promise<void> {
+  btn.click();
+  // Optionally, wait for navigation or add a delay if needed
+  await new Promise((resolve) => setTimeout(resolve, 300));
 }
 
-function openFileLinksOnResultsPage(): string[] {
+async function clickFileLinksSequentially(buttons: NodeListOf<HTMLButtonElement>): Promise<void> {
+  for (let i = 0; i < buttons.length; i++) {
+    await clickFileButton(buttons[i]);
+  }
+}
+
+async function openFileLinksOnResultsPage(): Promise<string[]> {
   const links: string[] = [];
   const table = document.querySelector<HTMLTableElement>('#NameResultsTable');
+  console.log('table', table);
   if (!table) return links;
-  const buttons = table.querySelectorAll('button.ButtonAsLink[type="submit"]');
-  buttons.forEach((btn) => {
-    const value = btn.getAttribute('value');
-    if (value) {
-      links.push(value);
-      openFileLink(value);
-    }
-  });
+
+  const buttons = table.querySelectorAll('button.ButtonAsLink[type="submit"]') as NodeListOf<HTMLButtonElement>;
+  await clickFileLinksSequentially(buttons);
   return links;
 }
 
@@ -81,7 +84,7 @@ browser.runtime.onMessage.addListener(
       }
 
       if (message.step === 'OPEN_FILE_LINKS') {
-        const opened = openFileLinksOnResultsPage();
+        const opened = await openFileLinksOnResultsPage();
         return opened;
       }
       return true;
