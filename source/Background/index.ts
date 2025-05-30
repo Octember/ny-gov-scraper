@@ -7,16 +7,18 @@ import {
   ContentToBackgroundMessage,
 } from '../types';
 
-const STEP_ORDER: WorkflowStep[] = [
-  'START_SCRAPE',
-  'FILE_SEARCH_HOME',
-  'FILE_SEARCH_RESULTS',
-  'OPEN_FILE_LINKS',
-  'CLICK_PROBATE_PETITION',
-  'CLOSE_FILE',
-];
-
-const MAX_RETRIES = 3;
+const CONFIG = {
+  STEP_ORDER: [
+    'START_SCRAPE',
+    'FILE_SEARCH_HOME',
+    'FILE_SEARCH_RESULTS',
+    'OPEN_FILE_LINKS',
+    'CLICK_PROBATE_PETITION',
+    'CLOSE_FILE',
+  ] as WorkflowStep[],
+  MAX_RETRIES: 3,
+  MAX_INDEX: 100,
+};
 
 // Workflow state singleton
 const workflowState: WorkflowStatus = {
@@ -45,7 +47,7 @@ async function notifyContent(step: 'CHECK_STATUS') {
 
 async function startWorkflow() {
   workflowState.isActive = true;
-  workflowState.currentStep = STEP_ORDER[0];
+  workflowState.currentStep = CONFIG.STEP_ORDER[0];
   workflowState.metadata = { step: workflowState.currentStep, currentIndex: 0 };
   workflowState.retryCount = 0;
   crawledFileIds.clear();
@@ -57,37 +59,40 @@ async function startWorkflow() {
 
 async function completeStep(): Promise<void> {
   workflowState.retryCount = 0;
-  const currentIndex = STEP_ORDER.indexOf(workflowState.currentStep!);
+  const currentIndex = CONFIG.STEP_ORDER.indexOf(workflowState.currentStep!);
 
   if (workflowState.metadata.currentIndex !== undefined) {
     workflowState.metadata.currentIndex += 1;
   }
 
-  if (currentIndex < STEP_ORDER.length - 1) {
-    workflowState.currentStep = STEP_ORDER[currentIndex + 1];
-    log('Advancing to step:', workflowState.currentStep);
+  if (currentIndex < CONFIG.STEP_ORDER.length - 1) {
+    const nextStep = CONFIG.STEP_ORDER[currentIndex + 1];
+    workflowState.currentStep = nextStep;
+    log('Advancing to step:', nextStep);
     
-    // Add delay after CLOSE_FILE step to allow page transition
-    if (workflowState.currentStep === 'CLOSE_FILE') {
+    // For CLOSE_FILE, notify popup first and wait before notifying content
+    if (nextStep === 'CLOSE_FILE') {
+      await notifyPopup({ isActive: true });
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
     
     await notifyContent('CHECK_STATUS');
   } else {
+    // For workflow completion, notify popup first
+    await notifyPopup({ isActive: false });
     log('Workflow complete');
     workflowState.isActive = false;
     workflowState.currentStep = null;
     workflowState.metadata = {};
-    await notifyPopup({ isActive: false });
   }
 }
 
 async function failStep(errorMsg: string) {
   log('Step failed:', errorMsg);
 
-  if (workflowState.retryCount < MAX_RETRIES) {
+  if (workflowState.retryCount < CONFIG.MAX_RETRIES) {
     workflowState.retryCount += 1;
-    log(`Retrying (${workflowState.retryCount}/${MAX_RETRIES})`);
+    log(`Retrying (${workflowState.retryCount}/${CONFIG.MAX_RETRIES})`);
     await notifyContent('CHECK_STATUS');
   } else {
     log('Max retries reached, aborting workflow');
