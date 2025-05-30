@@ -7,13 +7,12 @@ function openWebPage(url: string): Promise<Tabs.Tab> {
   return browser.tabs.create({ url });
 }
 
-const sendAlertToContentScript = async (): Promise<void> => {
-  const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-  if (tabs[0]?.id) {
-    await browser.tabs.sendMessage(tabs[0].id, {
-      type: 'START_SCRAPE',
-    });
-  }
+const sendStepToBackground = async (step: string, metadata: Record<string, any> = {}): Promise<void> => {
+  await browser.runtime.sendMessage({
+    type: 'POPUP_TO_BACKGROUND',
+    step,
+    metadata,
+  });
 };
 
 const Popup: React.FC = () => {
@@ -45,7 +44,7 @@ const Popup: React.FC = () => {
           opacity: 0.8,
           display: 'flex',
         }}
-        onClick={sendAlertToContentScript}
+        onClick={() => sendStepToBackground('START_SCRAPE')}
       >
         Start Scrape in Content Script
       </button>
