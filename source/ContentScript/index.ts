@@ -5,9 +5,20 @@ import { scrapeFileSearchResults } from './fileSearchResultsPage';
 console.log('helloworld from content script');
 
 const TARGET_URL = 'https://websurrogates.nycourts.gov/';
+const PAGE_LOAD_WAIT_MS = 10000; // 10 seconds
+
+// Track execution state for this content script instance
+let currentStep: string | null = null;
+let isExecuting = false;
 
 function isValidDomain(url: string): boolean {
   return url.startsWith(TARGET_URL);
+}
+
+async function waitForPageLoad(): Promise<void> {
+  console.log('Waiting for page load...');
+  await new Promise((resolve) => setTimeout(resolve, PAGE_LOAD_WAIT_MS));
+  console.log('Page load wait complete');
 }
 
 async function handleStartScrape(): Promise<void> {
@@ -29,12 +40,14 @@ async function handleStartScrape(): Promise<void> {
   if (window.location.href === 'https://websurrogates.nycourts.gov/File/FileSearch') {
     console.log('fileSearchHome');
     await fileSearchHome();
+    await waitForPageLoad();
     return;
   }
 
   if (window.location.href === 'https://websurrogates.nycourts.gov/File/FileSearchResults') {
     console.log('fileSearchResultsPage');
     await scrapeFileSearchResults();
+    await waitForPageLoad();
     return;
   }
 
@@ -43,8 +56,7 @@ async function handleStartScrape(): Promise<void> {
 
 async function clickFileButton(btn: HTMLButtonElement): Promise<void> {
   btn.click();
-  // Optionally, wait for navigation or add a delay if needed
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  await waitForPageLoad();
 }
 
 async function clickFileLinksSequentially(buttons: NodeListOf<HTMLButtonElement>): Promise<void> {
@@ -71,11 +83,16 @@ async function executeStep(step: string, _metadata: Record<string, unknown>): Pr
       return null;
     case 'FILE_SEARCH_HOME':
       await fileSearchHome();
+      await waitForPageLoad();
       return null;
     case 'FILE_SEARCH_RESULTS':
-      return scrapeFileSearchResults();
+      const results = await scrapeFileSearchResults();
+      await waitForPageLoad();
+      return results;
     case 'OPEN_FILE_LINKS':
-      return openFileLinksOnResultsPage();
+      const opened = await openFileLinksOnResultsPage();
+      await waitForPageLoad();
+      return opened;
     default:
       return null;
   }
@@ -83,19 +100,35 @@ async function executeStep(step: string, _metadata: Record<string, unknown>): Pr
 
 // Check status and execute next step if active
 async function checkAndExecuteStep(): Promise<void> {
+  // Skip if we're already executing a step
+  if (isExecuting) {
+    return;
+  }
+
   const status = await browser.runtime.sendMessage({
     type: 'CONTENT_TO_BACKGROUND',
     action: 'GET_STATUS',
   });
 
-  if (status.isActive && status.currentStep) {
-    const result = await executeStep(status.currentStep, status.metadata);
+  // Skip if no step or if we're already on this step
+  if (!status.isActive || !status.currentStep || status.currentStep === currentStep) {
+    return;
+  }
+
+  try {
+    isExecuting = true;
+    currentStep = status.currentStep;
+    console.log('Executing step:', currentStep);
+    
+    const result = await executeStep(currentStep, status.metadata);
     
     await browser.runtime.sendMessage({
       type: 'CONTENT_TO_BACKGROUND',
       action: 'STEP_COMPLETE',
       result,
     });
+  } finally {
+    isExecuting = false;
   }
 }
 

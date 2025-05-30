@@ -1,8 +1,8 @@
 {
 	"extends": "@abhijithvijayan/tsconfig",
 	"compilerOptions": {
-		"target": "es5", // ECMAScript target version: 'ES3' (default), 'ES5', 'ES2015', 'ES2016', 'ES2017','ES2018' or 'ESNEXT'.
-		"module": "esnext", // Module code generation: 'none', 'commonjs', 'amd', 'system', 'umd', 'es2015', or 'ESNext'.
+		"target": "es2018",
+		"module": "esnext",
 		"lib": [
 			"dom",
 			"dom.iterable",
@@ -13,6 +13,23 @@
 		/* Additional Checks */
 		"useDefineForClassFields": true,
 		"skipLibCheck": true,
+		"downlevelIteration": true,
+		"strict": true,
+		"noImplicitAny": false,
+		"strictNullChecks": false,
+		"strictFunctionTypes": false,
+		"strictBindCallApply": false,
+		"strictPropertyInitialization": false,
+		"noImplicitThis": false,
+		"alwaysStrict": false,
+		"noUnusedLocals": false,
+		"noUnusedParameters": false,
+		"noImplicitReturns": false,
+		"noFallthroughCasesInSwitch": false,
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
+		"resolveJsonModule": true,
+		"jsx": "react"
 	},
 	"include": [
 		"source",

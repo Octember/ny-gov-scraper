@@ -5,14 +5,27 @@ browser.runtime.onInstalled.addListener((): void => {
 });
 
 // Step order for the workflow
-type STEP = 'START_SCRAPE' | 'FILE_SEARCH_HOME' | 'FILE_SEARCH_RESULTS' | 'OPEN_FILE_LINKS';
-const STEP_ORDER: STEP[] = ['START_SCRAPE', 'FILE_SEARCH_HOME', 'FILE_SEARCH_RESULTS', 'OPEN_FILE_LINKS'];
+type STEP = 
+  | 'START_SCRAPE'
+  | 'FILE_SEARCH_HOME'
+  | 'FILE_SEARCH_RESULTS'
+  | 'OPEN_FILE_LINKS'
+  | 'CLICK_PROBATE_PETITION';
+
+const STEP_ORDER: STEP[] = [
+  'START_SCRAPE',
+  'FILE_SEARCH_HOME',
+  'FILE_SEARCH_RESULTS',
+  'OPEN_FILE_LINKS',
+  'CLICK_PROBATE_PETITION',
+];
 
 interface WorkflowState {
   isActive: boolean;
   currentStepIndex: number;
   metadata: Record<string, unknown>;
-  results: any[];
+  results: unknown[];
+  isWaiting: boolean;
 }
 
 let workflowState: WorkflowState = {
@@ -20,9 +33,13 @@ let workflowState: WorkflowState = {
   currentStepIndex: 0,
   metadata: {},
   results: [],
+  isWaiting: false,
 };
 
-async function sendStepToContent(step: STEP, metadata: Record<string, unknown>): Promise<any> {
+async function sendStepToContent(
+  step: STEP,
+  metadata: Record<string, unknown>
+): Promise<unknown> {
   const tabs = await browser.tabs.query({ active: true, currentWindow: true });
   if (tabs[0]?.id) {
     const result = await browser.tabs.sendMessage(tabs[0].id, {
@@ -44,6 +61,7 @@ browser.runtime.onMessage.addListener(async (message, _sender) => {
       currentStepIndex: 0,
       metadata: message.metadata || {},
       results: [],
+      isWaiting: false,
     };
     
     // Notify content script to start processing
@@ -59,7 +77,7 @@ browser.runtime.onMessage.addListener(async (message, _sender) => {
 
   if (message.type === 'CONTENT_TO_BACKGROUND') {
     if (message.action === 'STEP_COMPLETE') {
-      const result = message.result;
+      const { result } = message;
       if (result) {
         workflowState.results.push(result);
       }
@@ -69,20 +87,25 @@ browser.runtime.onMessage.addListener(async (message, _sender) => {
       if (workflowState.currentStepIndex >= STEP_ORDER.length) {
         // Workflow complete
         workflowState.isActive = false;
+        workflowState.isWaiting = false;
         console.log('All steps complete', workflowState.results);
         return true;
       }
       
       // Send next step to content script
       const nextStep = STEP_ORDER[workflowState.currentStepIndex];
+      workflowState.isWaiting = true;
       await sendStepToContent(nextStep, workflowState.metadata);
     }
     
     if (message.action === 'GET_STATUS') {
       return {
         isActive: workflowState.isActive,
-        currentStep: workflowState.isActive ? STEP_ORDER[workflowState.currentStepIndex] : null,
+        currentStep: workflowState.isActive 
+          ? STEP_ORDER[workflowState.currentStepIndex] 
+          : null,
         metadata: workflowState.metadata,
+        isWaiting: workflowState.isWaiting,
       };
     }
   }
