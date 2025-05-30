@@ -1,94 +1,184 @@
-# Chrome Extension Starter with Vite, React, TypeScript, and Tailwind CSS
-This project is a starter template for building modern Chrome extensions using Vite, React, TypeScript, and Tailwind CSS. It simplifies the setup so you can focus on building your extension's features.
-
-<div style="display: flex; justify-content: space-around">
-  <img src="https://github.com/user-attachments/assets/b2267b19-1618-4797-8e0e-a241697b92cf" alt="image 1" width="200"/>
-  <img src="https://github.com/user-attachments/assets/eb6304c9-afd7-4bfc-b9ce-8099531a66d9" alt="image 2" width="200"/>
-  <img src="https://github.com/user-attachments/assets/7808d29d-d1ca-4287-b82b-183ad7b6510a" alt="image 3" width="200"/>
-  <img src="https://github.com/user-attachments/assets/c2f328e2-f7d6-4e6d-a3ec-8e750625e0f8" alt="image 4" width="200"/>
-</div>
-
-## View tutorial on YouTube
- <a href="https://www.youtube.com/watch?v=jwDErziR1nE">
-    <img src="http://i.ytimg.com/vi/jwDErziR1nE/hqdefault.jpg" alt="YouTube video" width="200"/>
+<h1 align="center">🚀 web-extension-starter</h1>
+<p align="center">Web Extension starter to build "Write Once Run on Any Browser" extension</p>
+<div align="center">
+  <a href="https://travis-ci.com/abhijithvijayan/web-extension-starter">
+    <img src="https://travis-ci.com/abhijithvijayan/web-extension-starter.svg?branch=react-typescript" alt="Travis Build" />
   </a>
+  </a>
+  <a href="https://david-dm.org/abhijithvijayan/web-extension-starter">
+    <img src="https://img.shields.io/david/abhijithvijayan/web-extension-starter.svg?colorB=orange" alt="DEPENDENCIES" />
+  </a>
+  <a href="https://github.com/abhijithvijayan/web-extension-starter/blob/master/LICENSE">
+    <img src="https://img.shields.io/github/license/abhijithvijayan/web-extension-starter.svg" alt="LICENSE" />
+  </a>
+  <a href="https://twitter.com/intent/tweet?text=Check%20out%20web-extension-starter%21%20by%20%40_abhijithv%0A%0AWeb%20Extension%20starter%20to%20build%20%22Write%20Once%20Run%20on%20Any%20Browser%22%20extension.%20https%3A%2F%2Fgithub.com%2Fabhijithvijayan%2Fweb-extension-starter%0A%0A%23javascript%20%23react%20%23typescript%20%23sass%20%23webextension%20%23chrome%20%23firefox%20%23opera">
+     <img src="https://img.shields.io/twitter/url/http/shields.io.svg?style=social" alt="TWEET" />
+  </a>
+</div>
+<h3 align="center">🙋‍♂️ Made by <a href="https://twitter.com/_abhijithv">@abhijithvijayan</a></h3>
+<p align="center">
+  Donate:
+  <a href="https://www.paypal.me/iamabhijithvijayan" target='_blank'><i><b>PayPal</b></i></a>,
+  <a href="https://www.patreon.com/abhijithvijayan" target='_blank'><i><b>Patreon</b></i></a>
+</p>
+<p align="center">
+  <a href='https://www.buymeacoffee.com/abhijithvijayan' target='_blank'>
+    <img height='36' style='border:0px;height:36px;' src='https://bmc-cdn.nyc3.digitaloceanspaces.com/BMC-button-images/custom_images/orange_img.png' border='0' alt='Buy Me a Coffee' />
+  </a>
+</p>
+<hr />
+
+❤️ it? ⭐️ it on [GitHub](https://github.com/abhijithvijayan/web-extension-starter) or [Tweet](https://twitter.com/intent/tweet?text=Check%20out%20web-extension-starter%21%20by%20%40_abhijithv%0A%0AWeb%20Extension%20starter%20to%20build%20%22Write%20Once%20Run%20on%20Any%20Browser%22%20extension.%20https%3A%2F%2Fgithub.com%2Fabhijithvijayan%2Fweb-extension-starter%0A%0A%23javascript%20%23react%20%23typescript%20%23sass%20%23webextension%20%23chrome%20%23firefox%20%23opera) about it.
+
+🧙‍♂️ **React + TypeScript** = [This](https://github.com/abhijithvijayan/web-extension-starter/tree/react-typescript) branch
+
+😨 **React + JavaScript** = Checkout [react-javascript](https://github.com/abhijithvijayan/web-extension-starter/tree/react-javascript) branch
+
+👶🏼 **HTML + JavaScript** = Checkout [master](https://github.com/abhijithvijayan/web-extension-starter/tree/master) branch
 
 ## Features
-- **Fast reloading** develop UI faster, view the popup and options page
-- **Vite** for fast bundling and development
-- **React** for building interactive UI components
-- **TypeScript** for type-safe JavaScript development
-- **Tailwind CSS** for easy and responsive styling
-- **chrome-types** Chrome's API TS files for auto-completion 
 
-## Installation
+- Cross Browser Support (Web-Extensions API)
+- Browser Tailored Manifest generation
+- Automatic build on code changes
+- Auto packs browser specific build files
+- SASS styling
+- TypeScript by default
+- ES6 modules support
+- React UI Library by default
+- Smart reload
 
-### Clone this repository:
-```
-git clone https://github.com/omribarmats/chrome-extension-starter.git new-project
-```
-* Replace `new-project` with your project name
+## Browser Support
 
-### Open the new directory:
-```
-cd new-project
-```
-### Install dependencies:
-```
-npm install
-```
-### Start the development server:
-```
-npm run dev
-```
-## Load the Extension
+| [![Chrome](https://raw.github.com/alrra/browser-logos/master/src/chrome/chrome_48x48.png)](/) | [![Firefox](https://raw.github.com/alrra/browser-logos/master/src/firefox/firefox_48x48.png)](/) | [![Opera](https://raw.github.com/alrra/browser-logos/master/src/opera/opera_48x48.png)](/) | [![Edge](https://raw.github.com/alrra/browser-logos/master/src/edge/edge_48x48.png)](/) | [![Yandex](https://raw.github.com/alrra/browser-logos/master/src/yandex/yandex_48x48.png)](/) | [![Brave](https://raw.github.com/alrra/browser-logos/master/src/brave/brave_48x48.png)](/) | [![vivaldi](https://raw.github.com/alrra/browser-logos/master/src/vivaldi/vivaldi_48x48.png)](/) |
+| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| 49 & later ✔                                                                                  | 52 & later ✔                                                                                     | 36 & later ✔                                                                               | 79 & later ✔                                                                            | Latest ✔                                                                                      | Latest ✔                                                                                   | Latest ✔                                                                                         |
 
-1. Run the build command: `npm run build.`
-2. Go to `chrome://extensions/` in your Chrome browser.
-3. Enable `Developer mode`.
-4. Click `Load unpacked` and select the `dist` folder from the project.
+## Used by extensions in production that has over 100,000+ users.
 
-## Development
-- Hot-reload enabled for easier development.
-- Modify your code in the src folder.
-- Tailwind CSS is already configured and ready to use.
-- Run `nmp run build` to implement changes to `dist` folder
-- Go on `chrome://extensions/` and click refresh `⟳`
+- [daily.dev](https://daily.dev) in [daily.dev extension](https://r.daily.dev/get)
+- [Jiffy Reader](https://chrome.google.com/webstore/detail/jiffy-reader/lljedihjnnjjefafchaljkhbpfhfkdic) in [ansh/jiffyreader.com](https://github.com/ansh/jiffyreader.com)
+- [kutt-extension](https://chrome.google.com/webstore/detail/kutt/pklakpjfiegjacoppcodencchehlfnpd) in [abhijithvijayan/kutt-extension](https://github.com/abhijithvijayan/kutt-extension)
+- [doubanIMDb](https://chrome.google.com/webstore/detail/doubanimdb/nfibbjnhkbjlgjaojglmmibdjicidini) in [lisongx/doubanIMDb](https://github.com/lisongx/doubanIMDb)
+- [Mooc Assistant](https://chrome.google.com/webstore/detail/mooc-assistant/oebggekgendmoeedkkdkdcdbmfbfeldc) in [unbyte/mooc-assistant](https://github.com/unbyte/mooc-assistant)
+- ArtiPub in [crawlab-team/artipub](https://github.com/crawlab-team/artipub/tree/master/extensions)
 
-### How to change the popup? 
-- Go on `src/chrome-extension/popup/index.tsx`
-- Once changes are made open the terminal and run `nmp run build` then visit `chrome://extensions/` and click the refresh `⟳` button on your extension
+and many more...
 
-### How to change the options page? 
-- Go on `src/chrome-extension/options/index.tsx`
-- Once changes are made open the terminal and run `nmp run build` then visit `chrome://extensions/` and click the refresh `⟳` button on your extension
+## Use this template
 
-- ### How to add a background script? 
-- Create a `background.ts` file inside the `src` folder
-- Go on `vite.config.ts` and add this line `background: resolve(__dirname, "src/background.ts"),` under `build.rollupOptions.input`
-- For example 
+Create a new directory and run
+
 ```
- build: {
-    rollupOptions: {
-      input: {
-        popup: resolve(__dirname, "popup.html"),
-        options: resolve(__dirname, "options.html"),
-        background: resolve(__dirname, "src/background.ts"),
-      },
-      output: {
-        entryFileNames: "[name].js",
-      },
-    },
-  },
+curl -fsSL https://github.com/abhijithvijayan/web-extension-starter/archive/react-typescript.tar.gz | tar -xz --strip-components=1
 ```
-- Go on `manifest.json` and add this code:
-```
-  "background": {
-    "service_worker": "background.js",
-    "type": "module"
-  }
-``` 
-- Open the terminal and run `nmp run build` then visit `chrome://extensions/` and click the refresh `⟳` button on your extension
 
-## Contributing
-Feel free to fork the project and make improvements or submit bug reports or issues.
+## 🚀 Quick Start
+
+Ensure you have
+
+- [Node.js](https://nodejs.org) 10 or later installed
+
+Then run the following:
+
+- `npm install` to install dependencies.
+- `npm run dev:chrome` to start the development server for chrome extension
+- `npm run dev:firefox` to start the development server for firefox addon
+- `npm run dev:opera` to start the development server for opera extension
+- `npm run build:chrome` to build chrome extension
+- `npm run build:firefox` to build firefox addon
+- `npm run build:opera` to build opera extension
+- `npm run build` builds and packs extensions all at once to extension/ directory
+
+### Development
+
+- `npm install` to install dependencies.
+- To watch file changes in development
+
+  - Chrome
+    - `npm run dev:chrome`
+  - Firefox
+    - `npm run dev:firefox`
+  - Opera
+    - `npm run dev:opera`
+
+- **Load extension in browser**
+
+- ### Chrome
+
+  - Go to the browser address bar and type `chrome://extensions`
+  - Check the `Developer Mode` button to enable it.
+  - Click on the `Load Unpacked Extension…` button.
+  - Select your browsers folder in `extension/`.
+
+- ### Firefox
+
+  - Load the Add-on via `about:debugging` as temporary Add-on.
+  - Choose the `manifest.json` file in the extracted directory
+
+- ### Opera
+
+  - Load the extension via `opera:extensions`
+  - Check the `Developer Mode` and load as unpacked from extension’s extracted directory.
+
+### Production
+
+- `npm run build` builds the extension for all the browsers to `extension/BROWSER` directory respectively.
+
+Note: By default the `manifest.json` is set with version `0.0.0`. The webpack loader will update the version in the build with that of the `package.json` version. In order to release a new version, update version in `package.json` and run script.
+
+If you don't want to use `package.json` version, you can disable the option [here](https://github.com/abhijithvijayan/web-extension-starter/blob/e10158c4a49948dea9fdca06592876d9ca04e028/webpack.config.js#L79).
+
+### Generating browser specific manifest.json
+
+Update `source/manifest.json` file with browser vendor prefixed manifest keys
+
+```js
+{
+  "__chrome__name": "SuperChrome",
+  "__firefox__name": "SuperFox",
+  "__edge__name": "SuperEdge",
+  "__opera__name": "SuperOpera"
+}
+```
+
+if the vendor is `chrome` this compiles to:
+
+```js
+{
+  "name": "SuperChrome",
+}
+```
+
+---
+
+Add keys to multiple vendors by separating them with | in the prefix
+
+```
+{
+  __chrome|opera__name: "SuperBlink"
+}
+```
+
+if the vendor is `chrome` or `opera`, this compiles to:
+
+```
+{
+  "name": "SuperBlink"
+}
+```
+
+See the original [README](https://github.com/abhijithvijayan/wext-manifest-loader) of `wext-manifest-loader` package for more details
+
+## Bugs
+
+Please file an issue [here](https://github.com/abhijithvijayan/web-extension-starter/issues/new) for bugs, missing documentation, or unexpected behavior.
+
+### Linting & TypeScript Config
+
+- Shared Eslint & Prettier Configuration - [`@abhijithvijayan/eslint-config`](https://www.npmjs.com/package/@abhijithvijayan/eslint-config)
+- Shared TypeScript Configuration - [`@abhijithvijayan/tsconfig`](https://www.npmjs.com/package/@abhijithvijayan/tsconfig)
+
+## License
+
+MIT © [Abhijith Vijayan](https://abhijithvijayan.in)
