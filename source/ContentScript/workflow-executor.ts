@@ -92,35 +92,44 @@ async function checkAndExecuteStep(): Promise<void> {
     return;
   }
 
-  const status = await browser.runtime.sendMessage({
-    type: 'CONTENT_TO_BACKGROUND',
-    action: 'GET_STATUS',
-  });
-
-  console.log('Current workflow status:', status);
-
-  // Skip if no step or if we're already on this step
-  if (!status.isActive) {
-    console.log('Workflow not active, skipping');
-    return;
-  }
-
-  if (!status.currentStep) {
-    console.log('No current step, skipping');
-    return;
-  }
-
-  if (status.currentStep === currentStep) {
-    console.log('Already on current step, skipping');
-    return;
-  }
-
   try {
+    const status = await browser.runtime.sendMessage({
+      type: 'CONTENT_TO_BACKGROUND',
+      action: 'GET_STATUS',
+    });
+
+    console.log('Current workflow status:', status);
+
+    // Skip if no step or if we're already on this step
+    if (!status.isActive) {
+      console.log('Workflow not active, skipping');
+      return;
+    }
+
+    if (!status.currentStep) {
+      console.log('No current step, skipping');
+      return;
+    }
+
+    if (status.currentStep === currentStep) {
+      console.log('Already on current step, skipping');
+      return;
+    }
+
     isExecuting = true;
     currentStep = status.currentStep;
     console.log('Starting execution of step:', currentStep);
     
-    const result = await executeStep(currentStep, status.metadata);
+    // Add timeout to step execution
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Step execution timed out')), 30000); // 30 second timeout
+    });
+
+    const result = await Promise.race([
+      executeStep(currentStep, status.metadata),
+      timeoutPromise,
+    ]);
+
     console.log('Step execution complete:', currentStep, 'Result:', result);
     
     await browser.runtime.sendMessage({
@@ -129,13 +138,41 @@ async function checkAndExecuteStep(): Promise<void> {
       result,
     });
   } catch (error) {
-    console.error('Error executing step:', error);
+    console.error('Error in workflow execution:', error);
+    // Notify background script of failure
+    await browser.runtime.sendMessage({
+      type: 'CONTENT_TO_BACKGROUND',
+      action: 'STEP_FAILED',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   } finally {
     isExecuting = false;
+    currentStep = null; // Reset current step to allow retry
   }
 }
 
-// Set up periodic status check
-setInterval(checkAndExecuteStep, 5000);
+// Set up periodic status check with exponential backoff
+let checkInterval = 1000; // Start with 1 second
+const maxInterval = 5000; // Max 5 seconds
+const minInterval = 1000; // Min 1 second
+
+function scheduleNextCheck(): void {
+  setTimeout(() => {
+    checkAndExecuteStep().finally(() => {
+      // Adjust interval based on success/failure
+      if (isExecuting) {
+        // If still executing, decrease interval to check more frequently
+        checkInterval = Math.max(minInterval, checkInterval / 2);
+      } else {
+        // If not executing, increase interval up to max
+        checkInterval = Math.min(maxInterval, checkInterval * 1.5);
+      }
+      scheduleNextCheck();
+    });
+  }, checkInterval);
+}
+
+// Start the first check
+scheduleNextCheck();
 
 export { checkAndExecuteStep }; 

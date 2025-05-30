@@ -14,11 +14,14 @@ const STEP_ORDER: WorkflowStep[] = [
   'CLICK_PROBATE_PETITION',
 ];
 
+const MAX_RETRIES = 3;
+
 // Initialize workflow state
 const workflowState: WorkflowStatus = {
   isActive: false,
   currentStep: null,
   metadata: {},
+  retryCount: 0,
 };
 
 browser.runtime.onMessage.addListener(
@@ -37,11 +40,11 @@ browser.runtime.onMessage.addListener(
       console.log('Starting workflow');
       // Start the workflow
       workflowState.isActive = true;
-      const step = STEP_ORDER[0];
-      workflowState.currentStep = step;
+      workflowState.currentStep = STEP_ORDER[0];
       workflowState.metadata = {
-        step,
+        step: workflowState.currentStep,
       };
+      workflowState.retryCount = 0;
       
       // Notify popup of state change
       if (sender.tab?.id) {
@@ -70,12 +73,13 @@ browser.runtime.onMessage.addListener(
           return workflowState;
         case 'STEP_COMPLETE':
           console.log('Step complete:', workflowState.currentStep);
+          workflowState.retryCount = 0; // Reset retry count on success
           if (workflowState.currentStep) {
             const currentIndex = STEP_ORDER.indexOf(workflowState.currentStep);
             if (currentIndex < STEP_ORDER.length - 1) {
               workflowState.currentStep = STEP_ORDER[currentIndex + 1];
               console.log('Moving to next step:', workflowState.currentStep);
-
+              
               // Notify content script of new step
               const tabs = await browser.tabs.query({ active: true, currentWindow: true });
               if (tabs[0]?.id) {
@@ -97,6 +101,36 @@ browser.runtime.onMessage.addListener(
                   isActive: false,
                 });
               }
+            }
+          }
+          return true;
+        case 'STEP_FAILED':
+          console.error('Step failed:', message.error);
+          if (workflowState.retryCount < MAX_RETRIES) {
+            workflowState.retryCount++;
+            console.log(`Retrying step (${workflowState.retryCount}/${MAX_RETRIES})...`);
+            
+            // Notify content script to retry
+            const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+            if (tabs[0]?.id) {
+              await browser.tabs.sendMessage(tabs[0].id, {
+                type: 'BACKGROUND_TO_CONTENT',
+                step: 'CHECK_STATUS',
+              });
+            }
+          } else {
+            console.error('Max retries reached, stopping workflow');
+            workflowState.isActive = false;
+            workflowState.currentStep = null;
+            workflowState.metadata = {};
+            
+            // Notify popup of failure
+            if (sender.tab?.id) {
+              await browser.runtime.sendMessage({
+                type: 'BACKGROUND_TO_POPUP',
+                isActive: false,
+                error: message.error,
+              });
             }
           }
           return true;

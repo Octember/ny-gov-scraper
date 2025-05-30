@@ -9,6 +9,7 @@ export interface WorkflowStatus {
   isActive: boolean;
   currentStep: WorkflowStep | null;
   metadata: Record<string, unknown>;
+  retryCount: number;
 }
 
 // Message types for communication between components
@@ -20,8 +21,9 @@ export interface PopupToBackgroundMessage {
 
 export interface ContentToBackgroundMessage {
   type: 'CONTENT_TO_BACKGROUND';
-  action: 'GET_STATUS' | 'STEP_COMPLETE';
+  action: 'GET_STATUS' | 'STEP_COMPLETE' | 'STEP_FAILED';
   result?: unknown;
+  error?: string;
 }
 
 export interface BackgroundToContentMessage {
@@ -32,6 +34,7 @@ export interface BackgroundToContentMessage {
 export interface BackgroundToPopupMessage {
   type: 'BACKGROUND_TO_POPUP';
   isActive: boolean;
+  error?: string;
 }
 
 // Union type for all possible messages
