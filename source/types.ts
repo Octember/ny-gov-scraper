@@ -9,8 +9,13 @@ export type WorkflowStep =
 export interface WorkflowStatus {
   isActive: boolean;
   currentStep: WorkflowStep | null;
-  metadata: Record<string, unknown>;
   retryCount: number;
+  metadata: {
+    step: WorkflowStep;
+    currentIndex: number;
+    lastSuccessfulIndex?: number;
+  };
+  stalledCount: number;
 }
 
 // Message types for communication between components

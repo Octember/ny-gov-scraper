@@ -24,8 +24,12 @@ const CONFIG = {
 const workflowState: WorkflowStatus = {
   isActive: false,
   currentStep: null,
-  metadata: {},
+  metadata: {
+    step: 'START_SCRAPE',
+    currentIndex: 0,
+  },
   retryCount: 0,
+  stalledCount: 0,
 };
 
 const crawledFileIds = new Set<string>();
@@ -50,6 +54,7 @@ async function startWorkflow() {
   workflowState.currentStep = CONFIG.STEP_ORDER[0];
   workflowState.metadata = { step: workflowState.currentStep, currentIndex: 0 };
   workflowState.retryCount = 0;
+  workflowState.stalledCount = 0;
   crawledFileIds.clear();
 
   log('Workflow started:', workflowState.currentStep);
@@ -59,31 +64,68 @@ async function startWorkflow() {
 
 async function completeStep(): Promise<void> {
   workflowState.retryCount = 0;
-  const currentIndex = CONFIG.STEP_ORDER.indexOf(workflowState.currentStep!);
+  const currentStep = workflowState.currentStep!;
+  const {metadata} = workflowState;
 
-  if (workflowState.metadata.currentIndex !== undefined) {
-    workflowState.metadata.currentIndex += 1;
+  const LOOP_STEPS: Partial<Record<WorkflowStep, WorkflowStep>> = {
+    OPEN_FILE_LINKS: 'CLICK_PROBATE_PETITION',
+    CLICK_PROBATE_PETITION: 'CLOSE_FILE',
+    CLOSE_FILE: 'OPEN_FILE_LINKS',
+  };
+
+  const isLoopingStep = Object.hasOwn(LOOP_STEPS, currentStep);
+
+  if (isLoopingStep) {
+    if (currentStep === 'CLOSE_FILE') {
+      const currentIndex = metadata.currentIndex || 0;
+      metadata.currentIndex += 1;
+
+      // If we looped and made no progress multiple times, end it
+      if (metadata.lastSuccessfulIndex === currentIndex) {
+        workflowState.stalledCount = (workflowState.stalledCount || 0) + 1;
+      } else {
+        workflowState.stalledCount = 0;
+        metadata.lastSuccessfulIndex = currentIndex;
+      }
+
+      if (
+        metadata.currentIndex >= CONFIG.MAX_INDEX ||
+        workflowState.stalledCount >= 3
+      ) {
+        log('Likely reached end of file list, ending workflow');
+        workflowState.isActive = false;
+        workflowState.currentStep = null;
+        workflowState.metadata = {
+          step: 'START_SCRAPE',
+          currentIndex: 0,
+        };
+        workflowState.stalledCount = 0;
+        await notifyPopup({ isActive: false });
+        return;
+      }
+    }
+
+    const nextStep = LOOP_STEPS[currentStep];
+    workflowState.currentStep = nextStep;
+    log(`Looping to step: ${nextStep} (Index: ${metadata.currentIndex})`);
+    await notifyContent('CHECK_STATUS');
+    return;
   }
 
-  if (currentIndex < CONFIG.STEP_ORDER.length - 1) {
-    const nextStep = CONFIG.STEP_ORDER[currentIndex + 1];
-    workflowState.currentStep = nextStep;
-    log('Advancing to step:', nextStep);
-    
-    // For CLOSE_FILE, notify popup first and wait before notifying content
-    if (nextStep === 'CLOSE_FILE') {
-      await notifyPopup({ isActive: true });
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-    
+  const index = CONFIG.STEP_ORDER.indexOf(currentStep);
+  if (index < CONFIG.STEP_ORDER.length - 1) {
+    workflowState.currentStep = CONFIG.STEP_ORDER[index + 1];
+    log('Advancing to step:', workflowState.currentStep);
     await notifyContent('CHECK_STATUS');
   } else {
-    // For workflow completion, notify popup first
     await notifyPopup({ isActive: false });
     log('Workflow complete');
     workflowState.isActive = false;
     workflowState.currentStep = null;
-    workflowState.metadata = {};
+    workflowState.metadata = {
+      step: 'START_SCRAPE',
+      currentIndex: 0,
+    };
   }
 }
 
@@ -98,7 +140,10 @@ async function failStep(errorMsg: string) {
     log('Max retries reached, aborting workflow');
     workflowState.isActive = false;
     workflowState.currentStep = null;
-    workflowState.metadata = {};
+    workflowState.metadata = {
+      step: 'START_SCRAPE',
+      currentIndex: 0,
+    };
     await notifyPopup({ isActive: false, error: errorMsg });
   }
 }

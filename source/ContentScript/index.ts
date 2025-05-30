@@ -1,5 +1,5 @@
 import { browser, Runtime } from 'webextension-polyfill-ts';
-import { ExtensionMessage, BackgroundToContentMessage } from '../types';
+import { ExtensionMessage,  } from '../types';
 import { checkAndExecuteStep } from './workflow-executor';
 
 console.log('helloworld from content script');
