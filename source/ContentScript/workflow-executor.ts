@@ -1,178 +1,165 @@
-import { browser, Runtime } from 'webextension-polyfill-ts';
-import { WorkflowStep, WorkflowStatus } from '../types';
+
+import { browser } from 'webextension-polyfill-ts';
+import { WorkflowStep } from '../types';
 import { fileSearchHome } from './fileSearchHome';
 import { scrapeFileSearchResults } from './fileSearchResultsPage';
 import { openFileLinksOnResultsPage } from './file-links';
 import { waitForPageLoad } from './page-load';
 
 const TARGET_URL = 'https://websurrogates.nycourts.gov/';
+const TIMEOUT_MS = 30_000;
+const INITIAL_INTERVAL = 1_000;
+const MAX_INTERVAL = 5_000;
+const MIN_INTERVAL = 1_000;
 
-// Track execution state for this content script instance
-let currentStep: WorkflowStep | null = null;
+type PageHandler = {
+  match: (url: string) => boolean;
+  handler: () => Promise<unknown>;
+};
+
+const PAGE_HANDLERS: Record<WorkflowStep, PageHandler> = {
+  START_SCRAPE: {
+    match: url => url.startsWith(TARGET_URL),
+    handler: async () => {
+      if (window.location.pathname === '/Home/HomePage') {
+        throw new Error('Complete the captcha and select "File Search"');
+      }
+    },
+  },
+  FILE_SEARCH_HOME: {
+    match: url => url.includes('/File/FileSearch'),
+    handler: async () => {
+      await fileSearchHome();
+      await waitForPageLoad();
+    },
+  },
+  FILE_SEARCH_RESULTS: {
+    match: url => url.includes('/File/FileSearchResults'),
+    handler: async () => {
+      const results = await scrapeFileSearchResults();
+      await waitForPageLoad();
+      return results;
+    },
+  },
+  OPEN_FILE_LINKS: {
+    match: url => url.includes('/File/FileSearchResults'),
+    handler: async () => {
+      const opened = await openFileLinksOnResultsPage();
+      await waitForPageLoad();
+      return opened;
+    },
+  },
+  CLICK_PROBATE_PETITION: {
+    match: url => url.includes('/File/FileHistory'),
+    handler: async () => {
+      // Navigate if needed
+      if (!window.location.href.includes('/File/FileHistory')) {
+        const links = document.querySelectorAll<HTMLAnchorElement>('a[href*="/File/FileHistory"]');
+        if (!links.length) throw new Error('No FileHistory links found');
+        links[0].click();
+        await waitForPageLoad();
+      }
+      // Click the probate button
+      await waitForPageLoad();
+      const button = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(btn =>
+        btn.textContent?.includes('PROBATE PETITION') ||
+        btn.id?.toLowerCase().includes('probate') ||
+        btn.className.toLowerCase().includes('probate'),
+      );
+      if (!button) throw new Error('Probate petition button not found');
+      button.click();
+      await waitForPageLoad();
+    },
+  },
+};
+
 let isExecuting = false;
+let interval = INITIAL_INTERVAL;
 
-function isValidDomain(url: string): boolean {
-  return url.startsWith(TARGET_URL);
+function log(...args: unknown[]) {
+  console.debug('[WorkflowExecutor]', ...args);
 }
 
-async function handleStartScrape(): Promise<void> {
-  console.log('handleStartScrape');
-  if (!isValidDomain(window.location.href)) {
-    // eslint-disable-next-line no-alert
-    alert(`Error: This action can only be run on ${TARGET_URL}`);
+// Fetch current workflow status from background script
+async function getStatus() {
+  return browser.runtime.sendMessage({
+    type: 'CONTENT_TO_BACKGROUND',
+    action: 'GET_STATUS',
+  });
+}
+
+// Execute the handler for a given step with timeout
+async function runStep(step: WorkflowStep): Promise<unknown> {
+  const pageHandler = PAGE_HANDLERS[step];
+  if (!pageHandler) {
+    throw new Error(`No handler defined for step: ${step}`);
+  }
+
+  // Redirect if domain mismatch
+  if (!window.location.href.startsWith(TARGET_URL)) {
     window.location.href = TARGET_URL;
     return;
   }
 
-  if (window.location.href === 'https://websurrogates.nycourts.gov/Home/HomePage') {
-    // eslint-disable-next-line no-alert
-    alert('Error: Click through the captcha first and select "File Search"');
+  // Ensure URL matches expected
+  if (!pageHandler.match(window.location.href)) {
+    log(`URL does not match handler for ${step}, redirecting`);
+    window.location.href = TARGET_URL;
     return;
   }
 
-  if (window.location.href === 'https://websurrogates.nycourts.gov/File/FileSearch') {
-    console.log('fileSearchHome');
-    await fileSearchHome();
-    await waitForPageLoad();
-    return;
-  }
-
-  if (window.location.href === 'https://websurrogates.nycourts.gov/File/FileSearchResults') {
-    console.log('fileSearchResultsPage');
-    await scrapeFileSearchResults();
-    await waitForPageLoad();
-    return;
-  }
-
-  // If we're not on any of the expected pages, redirect to the target URL
-  window.location.href = TARGET_URL;
+  return Promise.race([
+    pageHandler.handler(),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Step timeout')), TIMEOUT_MS)),
+  ]);
 }
 
-async function executeStep(step: WorkflowStep, _metadata: Record<string, unknown>): Promise<unknown> {
-  console.log('Executing step:', step);
-  switch (step) {
-    case 'START_SCRAPE':
-      await handleStartScrape();
-      return null;
-    case 'FILE_SEARCH_HOME':
-      console.log('Executing FILE_SEARCH_HOME');
-      await fileSearchHome();
-      await waitForPageLoad();
-      return null;
-    case 'FILE_SEARCH_RESULTS':
-      console.log('Executing FILE_SEARCH_RESULTS');
-      const results = await scrapeFileSearchResults();
-      await waitForPageLoad();
-      return results;
-    case 'OPEN_FILE_LINKS':
-      console.log('Executing OPEN_FILE_LINKS');
-      const opened = await openFileLinksOnResultsPage();
-      await waitForPageLoad();
-      return opened;
-    case 'CLICK_PROBATE_PETITION':
-      console.log('Executing CLICK_PROBATE_PETITION');
-      const buttons = document.querySelectorAll<HTMLButtonElement>('button');
-      const probateButton = Array.from(buttons).find(btn => btn.textContent?.includes('PROBATE PETITION'));
-      if (probateButton) {
-        probateButton.click();
-        await waitForPageLoad();
-      }
-      return null;
-    default:
-      console.log('Unknown step:', step);
-      return null;
-  }
-}
-
-// Check status and execute next step if active
+// Main loop: check status and execute step
 async function checkAndExecuteStep(): Promise<void> {
-  // Skip if we're already executing a step
-  if (isExecuting) {
-    console.log('Already executing a step, skipping');
-    return;
-  }
+  if (isExecuting) return;
+  isExecuting = true;
 
   try {
-    const status = await browser.runtime.sendMessage({
-      type: 'CONTENT_TO_BACKGROUND',
-      action: 'GET_STATUS',
-    });
-
-    console.log('Current workflow status:', status);
-
-    // Skip if no step or if we're already on this step
-    if (!status.isActive) {
-      console.log('Workflow not active, skipping');
+    const status = await getStatus();
+    log('Workflow status:', status);
+    if (!status.isActive || !status.currentStep) {
       return;
     }
 
-    if (!status.currentStep) {
-      console.log('No current step, skipping');
-      return;
-    }
+    const step: WorkflowStep = status.currentStep;
+    const result = await runStep(step);
 
-    if (status.currentStep === currentStep) {
-      console.log('Already on current step, skipping');
-      return;
-    }
-
-    isExecuting = true;
-    currentStep = status.currentStep;
-    console.log('Starting execution of step:', currentStep);
-    
-    // Add timeout to step execution
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Step execution timed out')), 30000); // 30 second timeout
-    });
-
-    const result = await Promise.race([
-      executeStep(currentStep, status.metadata),
-      timeoutPromise,
-    ]);
-
-    console.log('Step execution complete:', currentStep, 'Result:', result);
-    
     await browser.runtime.sendMessage({
       type: 'CONTENT_TO_BACKGROUND',
       action: 'STEP_COMPLETE',
       result,
     });
-  } catch (error) {
-    console.error('Error in workflow execution:', error);
-    // Notify background script of failure
+    log(`Step ${step} completed`);
+  } catch (error: any) {
+    log('Error during execution:', error);
     await browser.runtime.sendMessage({
       type: 'CONTENT_TO_BACKGROUND',
       action: 'STEP_FAILED',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error.message ?? 'Unknown error',
     });
   } finally {
     isExecuting = false;
-    currentStep = null; // Reset current step to allow retry
   }
 }
 
-// Set up periodic status check with exponential backoff
-let checkInterval = 1000; // Start with 1 second
-const maxInterval = 5000; // Max 5 seconds
-const minInterval = 1000; // Min 1 second
-
-function scheduleNextCheck(): void {
-  setTimeout(() => {
-    checkAndExecuteStep().finally(() => {
-      // Adjust interval based on success/failure
-      if (isExecuting) {
-        // If still executing, decrease interval to check more frequently
-        checkInterval = Math.max(minInterval, checkInterval / 2);
-      } else {
-        // If not executing, increase interval up to max
-        checkInterval = Math.min(maxInterval, checkInterval * 1.5);
-      }
-      scheduleNextCheck();
-    });
-  }, checkInterval);
+// Exponential backoff scheduler
+function scheduleNext(): void {
+  setTimeout(async () => {
+    await checkAndExecuteStep();
+    interval = isExecuting
+      ? Math.max(MIN_INTERVAL, interval / 2)
+      : Math.min(MAX_INTERVAL, interval * 1.5);
+    scheduleNext();
+  }, interval);
 }
 
-// Start the first check
-scheduleNextCheck();
+// Kick off the loop
+scheduleNext();
 
-export { checkAndExecuteStep }; 
+// Export for manual triggers or tests
+export { checkAndExecuteStep };

@@ -1,11 +1,12 @@
-import { browser, Runtime } from 'webextension-polyfill-ts';
-import { WorkflowStep, WorkflowStatus, ExtensionMessage, PopupToBackgroundMessage, ContentToBackgroundMessage } from '../types';
+import { browser } from 'webextension-polyfill-ts';
+import {
+  WorkflowStep,
+  WorkflowStatus,
+  ExtensionMessage,
+  PopupToBackgroundMessage,
+  ContentToBackgroundMessage,
+} from '../types';
 
-browser.runtime.onInstalled.addListener((): void => {
-  console.log('🦄', 'extension installed');
-});
-
-// Step order for the workflow
 const STEP_ORDER: WorkflowStep[] = [
   'START_SCRAPE',
   'FILE_SEARCH_HOME',
@@ -16,7 +17,7 @@ const STEP_ORDER: WorkflowStep[] = [
 
 const MAX_RETRIES = 3;
 
-// Initialize workflow state
+// Workflow state singleton
 const workflowState: WorkflowStatus = {
   isActive: false,
   currentStep: null,
@@ -24,118 +25,98 @@ const workflowState: WorkflowStatus = {
   retryCount: 0,
 };
 
+function log(...args: unknown[]) {
+  console.debug('[Background]', ...args);
+}
+
+async function notifyPopup(payload: Partial<PopupToBackgroundMessage>) {
+  await browser.runtime.sendMessage({ type: 'BACKGROUND_TO_POPUP', ...payload });
+}
+
+async function notifyContent(step: 'CHECK_STATUS') {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  if (tab?.id) {
+    await browser.tabs.sendMessage(tab.id, { type: 'BACKGROUND_TO_CONTENT', step });
+  }
+}
+
+async function startWorkflow() {
+  workflowState.isActive = true;
+  workflowState.currentStep = STEP_ORDER[0];
+  workflowState.metadata = { step: workflowState.currentStep };
+  workflowState.retryCount = 0;
+
+  log('Workflow started:', workflowState.currentStep);
+  await notifyPopup({ isActive: true });
+  await notifyContent('CHECK_STATUS');
+}
+
+async function completeStep() {
+  workflowState.retryCount = 0;
+  const currentIndex = STEP_ORDER.indexOf(workflowState.currentStep!);
+
+  if (currentIndex < STEP_ORDER.length - 1) {
+    workflowState.currentStep = STEP_ORDER[currentIndex + 1];
+    log('Advancing to step:', workflowState.currentStep);
+    await notifyContent('CHECK_STATUS');
+  } else {
+    log('Workflow complete');
+    workflowState.isActive = false;
+    workflowState.currentStep = null;
+    workflowState.metadata = {};
+    await notifyPopup({ isActive: false });
+  }
+}
+
+async function failStep(errorMsg: string) {
+  log('Step failed:', errorMsg);
+
+  if (workflowState.retryCount < MAX_RETRIES) {
+    workflowState.retryCount += 1;
+    log(`Retrying (${workflowState.retryCount}/${MAX_RETRIES})`);
+    await notifyContent('CHECK_STATUS');
+  } else {
+    log('Max retries reached, aborting workflow');
+    workflowState.isActive = false;
+    workflowState.currentStep = null;
+    workflowState.metadata = {};
+    await notifyPopup({ isActive: false, error: errorMsg });
+  }
+}
+
+browser.runtime.onInstalled.addListener(() => {
+  log('Extension installed');
+});
+
 browser.runtime.onMessage.addListener(
-  async (
-    message: ExtensionMessage,
-    sender: Runtime.MessageSender
-  ): Promise<unknown> => {
-    console.log('Background received message:', message);
+  async (message: ExtensionMessage, sender): Promise<unknown> => {
+    log('Message received:', message);
 
     if (message.type === 'POPUP_TO_BACKGROUND') {
-      if (message.action === 'GET_STATUS') {
-        console.log('Returning workflow state:', workflowState);
+      const pm = message as PopupToBackgroundMessage;
+      if (pm.action === 'GET_STATUS') {
+        log('Popup requested status');
         return workflowState;
       }
-
-      console.log('Starting workflow');
-      // Start the workflow
-      workflowState.isActive = true;
-      workflowState.currentStep = STEP_ORDER[0];
-      workflowState.metadata = {
-        step: workflowState.currentStep,
-      };
-      workflowState.retryCount = 0;
-      
-      // Notify popup of state change
-      if (sender.tab?.id) {
-        await browser.runtime.sendMessage({
-          type: 'BACKGROUND_TO_POPUP',
-          isActive: true,
-        });
+      if (pm.action === 'START_WORKFLOW') {
+        await startWorkflow();
+        return true;
       }
-
-      // Notify content script to start processing
-      const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-      if (tabs[0]?.id) {
-        console.log('Notifying content script to start workflow');
-        await browser.tabs.sendMessage(tabs[0].id, {
-          type: 'BACKGROUND_TO_CONTENT',
-          step: 'CHECK_STATUS',
-        });
-      }
-      return true;
     }
 
     if (message.type === 'CONTENT_TO_BACKGROUND') {
-      switch (message.action) {
-        case 'GET_STATUS':
-          console.log('Content script requesting status:', workflowState);
-          return workflowState;
-        case 'STEP_COMPLETE':
-          console.log('Step complete:', workflowState.currentStep);
-          workflowState.retryCount = 0; // Reset retry count on success
-          if (workflowState.currentStep) {
-            const currentIndex = STEP_ORDER.indexOf(workflowState.currentStep);
-            if (currentIndex < STEP_ORDER.length - 1) {
-              workflowState.currentStep = STEP_ORDER[currentIndex + 1];
-              console.log('Moving to next step:', workflowState.currentStep);
-              
-              // Notify content script of new step
-              const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-              if (tabs[0]?.id) {
-                await browser.tabs.sendMessage(tabs[0].id, {
-                  type: 'BACKGROUND_TO_CONTENT',
-                  step: 'CHECK_STATUS',
-                });
-              }
-            } else {
-              console.log('Workflow complete');
-              workflowState.isActive = false;
-              workflowState.currentStep = null;
-              workflowState.metadata = {};
-              
-              // Notify popup of completion
-              if (sender.tab?.id) {
-                await browser.runtime.sendMessage({
-                  type: 'BACKGROUND_TO_POPUP',
-                  isActive: false,
-                });
-              }
-            }
-          }
-          return true;
-        case 'STEP_FAILED':
-          console.error('Step failed:', message.error);
-          if (workflowState.retryCount < MAX_RETRIES) {
-            workflowState.retryCount++;
-            console.log(`Retrying step (${workflowState.retryCount}/${MAX_RETRIES})...`);
-            
-            // Notify content script to retry
-            const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-            if (tabs[0]?.id) {
-              await browser.tabs.sendMessage(tabs[0].id, {
-                type: 'BACKGROUND_TO_CONTENT',
-                step: 'CHECK_STATUS',
-              });
-            }
-          } else {
-            console.error('Max retries reached, stopping workflow');
-            workflowState.isActive = false;
-            workflowState.currentStep = null;
-            workflowState.metadata = {};
-            
-            // Notify popup of failure
-            if (sender.tab?.id) {
-              await browser.runtime.sendMessage({
-                type: 'BACKGROUND_TO_POPUP',
-                isActive: false,
-                error: message.error,
-              });
-            }
-          }
-          return true;
-        default:
-          return false;
+      const cm = message as ContentToBackgroundMessage;
+      if (cm.action === 'GET_STATUS') {
+        log('Content requested status');
+        return workflowState;
+      }
+      if (cm.action === 'STEP_COMPLETE') {
+        await completeStep();
+        return true;
+      }
+      if (cm.action === 'STEP_FAILED') {
+        await failStep(cm.error || 'Unknown error');
+        return true;
       }
     }
 
