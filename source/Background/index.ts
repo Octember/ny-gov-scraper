@@ -204,7 +204,10 @@ browser.runtime.onMessage.addListener(
       const pm = message as PopupToBackgroundMessage;
       if (pm.action === 'GET_STATUS') {
         log('Popup requested status');
-        return workflowState;
+        return {
+          ...workflowState,
+          crawledFileIds,
+        };
       }
       if (pm.action === 'START_WORKFLOW') {
         await startWorkflow(pm.metadata as WorkflowStatus['metadata']);
